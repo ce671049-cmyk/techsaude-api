@@ -7,7 +7,9 @@ export async function connectDB() {
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
-    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: true } : false,
+    ssl: {
+      rejectUnauthorized: false // 👈 Aceita certificado próprio do Aiven
+    }
   });
   return connection;
 }
