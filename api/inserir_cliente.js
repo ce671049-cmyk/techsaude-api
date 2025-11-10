@@ -1,3 +1,5 @@
+import { connectDB } from "./db.js";
+
 export default async function handler(req, res) {
   try {
     if (req.method === "POST") {
@@ -11,7 +13,7 @@ export default async function handler(req, res) {
         req.on("error", reject);
       });
 
-      // 🧩 Tenta converter o corpo em JSON
+      // 🧩 Converter o corpo em JSON
       let data;
       try {
         data = JSON.parse(body);
@@ -35,10 +37,20 @@ export default async function handler(req, res) {
 
       console.log("📩 Dados recebidos:", nome, telefone);
 
+      // 🔹 Conectar ao banco
+      const conn = await connectDB();
+
+      // 🔹 Inserir no banco
+      const sql = "INSERT INTO clientes (nome, telefone) VALUES (?, ?)";
+      await conn.execute(sql, [nome, telefone]);
+
+      // 🔹 Fechar conexão
+      await conn.end();
+
       // 🔹 Resposta de sucesso
       res.status(200).json({
         sucesso: true,
-        mensagem: "Dados recebidos com sucesso!",
+        mensagem: "Cliente inserido com sucesso!",
         dados: { nome, telefone },
       });
 
