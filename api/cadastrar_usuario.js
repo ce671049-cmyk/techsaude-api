@@ -1,6 +1,21 @@
 // api/cadastrar_usuario.js
 import { connectDB } from "./db.js";
 
+// 🔹 Função para converter data de DD/MM/YYYY → YYYY-MM-DD
+function formatarData(dataBr) {
+  try {
+    if (!dataBr || typeof dataBr !== "string") return dataBr;
+    if (dataBr.includes("/")) {
+      const [dia, mes, ano] = dataBr.split("/");
+      if (dia && mes && ano) return `${ano}-${mes}-${dia}`;
+    }
+    return dataBr; // já está no formato certo
+  } catch (err) {
+    console.error("Erro ao formatar data:", err);
+    return dataBr;
+  }
+}
+
 export default async function handler(req, res) {
   try {
     // 🔹 Aceita apenas POST
@@ -8,7 +23,7 @@ export default async function handler(req, res) {
       return res.status(405).json({ erro: "Método não permitido" });
     }
 
-    // 🔹 Força o corpo a virar JSON mesmo se vier como texto
+    // 🔹 Força conversão de texto para JSON
     let body = req.body;
     if (typeof body === "string") {
       try {
@@ -19,7 +34,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 🔹 Extrai os campos
     const {
       nome_completoUsuario,
       cpfUsuario,
@@ -31,7 +45,7 @@ export default async function handler(req, res) {
       telefoneUsuario,
     } = body;
 
-    // 🔹 Validação simples
+    // 🔹 Validação
     if (
       !nome_completoUsuario ||
       !cpfUsuario ||
@@ -42,15 +56,29 @@ export default async function handler(req, res) {
       !senhaUsuario ||
       !telefoneUsuario
     ) {
-      return res.status(400).json({ erro: "Campos obrigatórios faltando" });
+      return res
+        .status(400)
+        .json({ sucesso: false, erro: "Campos obrigatórios faltando" });
     }
 
-    console.log("📦 Dados recebidos (JSON):", body);
+    // 🔹 Corrige o formato da data
+    const dataFormatada = formatarData(data_nascUsuario);
+
+    console.log("📦 Dados recebidos:", {
+      nome_completoUsuario,
+      cpfUsuario,
+      emailUsuario,
+      dataFormatada,
+      enderecoUsuario,
+      sexoUsuario,
+      senhaUsuario,
+      telefoneUsuario,
+    });
 
     // 🔹 Conecta ao banco
     const db = await connectDB();
 
-    // 🔹 Query SQL
+    // 🔹 Executa o INSERT
     const query = `
       INSERT INTO TB_Usuario (
         nome_completoUsuario, cpfUsuario, emailUsuario,
@@ -59,31 +87,28 @@ export default async function handler(req, res) {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    // 🔹 Executa o INSERT
     const [result] = await db.execute(query, [
       nome_completoUsuario,
       cpfUsuario,
       emailUsuario,
-      data_nascUsuario,
+      dataFormatada,
       enderecoUsuario,
       sexoUsuario,
       senhaUsuario,
       telefoneUsuario,
     ]);
 
-    console.log("✅ Inserção concluída:", result);
     await db.end();
 
-    return res.status(200).json({
-      sucesso: true,
-      mensagem: "Usuário cadastrado com sucesso!",
-    });
+    console.log("✅ Usuário cadastrado:", result);
+    return res
+      .status(200)
+      .json({ sucesso: true, mensagem: "Usuário cadastrado com sucesso!" });
 
   } catch (err) {
     console.error("💥 Erro no servidor:", err);
-    return res.status(500).json({
-      sucesso: false,
-      erro: err.message || "Erro interno no servidor",
-    });
+    return res
+      .status(500)
+      .json({ sucesso: false, erro: err.message || "Erro interno no servidor" });
   }
 }
