@@ -1,5 +1,5 @@
 // api/cadastrar_usuario.js
-import { connectDB } from "/db.js";
+import { connectDB } from "./db.js";
 
 // 🔹 Função para converter data de DD/MM/YYYY → YYYY-MM-DD
 function formatarData(dataBr) {
