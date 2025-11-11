@@ -1,5 +1,5 @@
 import express from "express";
-import { connectDB } from "./connectDB.js"; // seu arquivo de conexão
+import { connectDB } from "./db.js"; // seu arquivo de conexão
 
 const app = express();
 app.use(express.json()); // para ler JSON do body
