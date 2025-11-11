@@ -1,3 +1,4 @@
+// api/cadastrar_usuario.js
 import { connectDB } from "./db.js";
 
 export default async function handler(req, res) {
@@ -16,7 +17,6 @@ export default async function handler(req, res) {
     telefoneUsuario,
   } = req.body;
 
-  // Validação básica
   if (
     !nome_completoUsuario ||
     !cpfUsuario ||
@@ -31,24 +31,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const connection = await mysql.createConnection({
-      host: "SEU_HOST",
-      user: "SEU_USUARIO",
-      password: "SUA_SENHA",
-      database: "SEU_BANCO",
-      ssl: { rejectUnauthorized: true },
-    });
+    const db = await connectDB();
 
     const query = `
       INSERT INTO TB_Usuario (
         nome_completoUsuario, cpfUsuario, emailUsuario,
         data_nascUsuario, enderecoUsuario, sexoUsuario,
         senhaUsuario, telefoneUsuario
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    await connection.execute(query, [
+    await db.execute(query, [
       nome_completoUsuario,
       cpfUsuario,
       emailUsuario,
@@ -59,11 +52,11 @@ export default async function handler(req, res) {
       telefoneUsuario,
     ]);
 
-    await connection.end();
+    await db.end();
 
     return res.status(200).json({ sucesso: true, mensagem: "Usuário cadastrado com sucesso!" });
   } catch (err) {
-    console.error("Erro no servidor:", err);
+    console.error("❌ Erro no servidor:", err.message);
     return res.status(500).json({ sucesso: false, erro: err.message });
   }
 }
