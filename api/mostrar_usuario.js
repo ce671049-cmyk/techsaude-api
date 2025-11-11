@@ -1,40 +1,44 @@
-// mostrar_usuario.js
-import { connectDB } from './db.js'; // ajuste o caminho se necessário
+import express from "express";
+import { connectDB } from "./connectDB.js"; // seu arquivo de conexão
 
-const router = express.Router();
+const app = express();
+app.use(express.json()); // para ler JSON do body
 
-// POST /api/mostrar_usuario
-router.post('/', async (req, res) => {
+// Endpoint POST para buscar usuário pelo CPF
+app.post("/mostrar_usuario", async (req, res) => {
   try {
-    const { cpf } = req.body;
+    const { cpfUsuario } = req.body;
 
-    if (!cpf) {
-      return res.status(400).json({ sucesso: false, erro: 'CPF não informado' });
+    if (!cpfUsuario) {
+      return res.status(400).json({ sucesso: false, erro: "CPF não informado" });
     }
 
+    // Conectar ao banco MySQL
     const conn = await connectDB();
 
-    // Busca o usuário pelo CPF
+    // Buscar usuário pelo CPF
     const [rows] = await conn.execute(
-      'SELECT nome, cpf, email, telefone, endereco, nascimento, sexo FROM usuarios WHERE cpf = ?',
-      [cpf]
+      `SELECT nome, cpf, email, nascimento, endereco, telefone, sexo 
+       FROM usuarios 
+       WHERE cpf = ?`,
+      [cpfUsuario]
     );
 
     await conn.end();
 
     if (rows.length === 0) {
-      return res.status(404).json({ sucesso: false, erro: 'Usuário não encontrado' });
+      return res.json({ sucesso: false, erro: "Usuário não encontrado" });
     }
 
-    // Retorna os dados do usuário
-    res.json({
-      sucesso: true,
-      usuario: rows[0] // row[0] já tem os campos nome, cpf, email, etc.
-    });
+    // Retornar os dados do usuário
+    res.json({ sucesso: true, usuario: rows[0] });
+
   } catch (err) {
-    console.error('Erro ao buscar usuário:', err);
-    res.status(500).json({ sucesso: false, erro: 'Erro interno do servidor' });
+    console.error(err);
+    res.status(500).json({ sucesso: false, erro: "Erro no servidor" });
   }
 });
 
-export default router;
+// Definir porta
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
