@@ -1,47 +1,43 @@
-import { connectDB } from "./db.js";
+import mysql from 'mysql2/promise';
+import { config } from './db.js';
 
 export default async function handler(req, res) {
   try {
-    // Aceita apenas POST
-    if (req.method !== "POST") {
-      return res.status(405).json({ sucesso: false, erro: "Método não permitido" });
+    if (req.method !== 'POST') {
+      return res.status(405).json({ sucesso: false, erro: 'Método não permitido' });
     }
 
-    // 🔹 Converte o corpo para JSON se for string
-    let body = req.body;
-    if (typeof body === "string") {
-      try {
-        body = JSON.parse(body);
-      } catch {
-        return res.status(400).json({ sucesso: false, erro: "Formato JSON inválido" });
-      }
+    // 🔹 Garantir leitura correta do corpo da requisição
+    const buffers = [];
+    for await (const chunk of req) {
+      buffers.push(chunk);
     }
+    const bodyString = Buffer.concat(buffers).toString();
+    const body = JSON.parse(bodyString);
 
     const { cpfUsuario, senhaUsuario } = body;
 
     if (!cpfUsuario || !senhaUsuario) {
-      return res.status(400).json({ sucesso: false, erro: "CPF e senha são obrigatórios" });
+      return res.status(400).json({ sucesso: false, erro: 'CPF e senha são obrigatórios!' });
     }
 
-    // Conecta ao banco
-    const db = await connectDB();
+    const connection = await mysql.createConnection(config);
 
-    // Executa o SELECT
-    const [rows] = await db.execute(
-      "SELECT * FROM TB_Usuario WHERE cpfUsuario = ? AND senhaUsuario = ?",
+    const [rows] = await connection.execute(
+      'SELECT * FROM TB_Usuario WHERE cpfUsuario = ? AND senhaUsuario = ?',
       [cpfUsuario, senhaUsuario]
     );
 
-    await db.end();
+    await connection.end();
 
     if (rows.length > 0) {
-      return res.status(200).json({ sucesso: true, mensagem: "Login realizado com sucesso!" });
+      res.status(200).json({ sucesso: true, mensagem: 'Login realizado com sucesso!' });
     } else {
-      return res.status(401).json({ sucesso: false, erro: "CPF ou senha incorretos!" });
+      res.status(401).json({ sucesso: false, erro: 'CPF ou senha inválidos!' });
     }
 
-  } catch (err) {
-    console.error("💥 Erro no servidor:", err);
-    return res.status(500).json({ sucesso: false, erro: err.message || "Erro interno no servidor" });
+  } catch (erro) {
+    console.error('💥 Erro no servidor:', erro);
+    res.status(500).json({ sucesso: false, erro: erro.message });
   }
 }
