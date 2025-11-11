@@ -2,18 +2,18 @@ import { connectDB } from "./db.js";
 
 export default async function handler(req, res) {
   try {
+    // Aceita apenas POST
     if (req.method !== "POST") {
-      return res.status(405).json({ erro: "Método não permitido" });
+      return res.status(405).json({ sucesso: false, erro: "Método não permitido" });
     }
 
-    // 🔹 Converte body em JSON (caso venha como texto)
+    // 🔹 Converte o corpo para JSON se for string
     let body = req.body;
     if (typeof body === "string") {
       try {
         body = JSON.parse(body);
-      } catch (err) {
-        console.error("❌ Erro ao converter JSON:", err);
-        return res.status(400).json({ sucesso: false, erro: "Formato inválido de JSON" });
+      } catch {
+        return res.status(400).json({ sucesso: false, erro: "Formato JSON inválido" });
       }
     }
 
@@ -23,9 +23,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ sucesso: false, erro: "CPF e senha são obrigatórios" });
     }
 
+    // Conecta ao banco
     const db = await connectDB();
 
-    // 🔹 Busca o usuário
+    // Executa o SELECT
     const [rows] = await db.execute(
       "SELECT * FROM TB_Usuario WHERE cpfUsuario = ? AND senhaUsuario = ?",
       [cpfUsuario, senhaUsuario]
@@ -34,10 +35,11 @@ export default async function handler(req, res) {
     await db.end();
 
     if (rows.length > 0) {
-      return res.status(200).json({ sucesso: true, mensagem: "Login realizado com sucesso!", usuario: rows[0] });
+      return res.status(200).json({ sucesso: true, mensagem: "Login realizado com sucesso!" });
     } else {
-      return res.status(401).json({ sucesso: false, erro: "CPF ou senha incorretos" });
+      return res.status(401).json({ sucesso: false, erro: "CPF ou senha incorretos!" });
     }
+
   } catch (err) {
     console.error("💥 Erro no servidor:", err);
     return res.status(500).json({ sucesso: false, erro: err.message || "Erro interno no servidor" });
