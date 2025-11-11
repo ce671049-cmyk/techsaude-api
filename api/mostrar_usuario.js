@@ -1,20 +1,40 @@
-import express from "express";
-import { connectDB } from "./db.js"; // seu arquivo de conexão
+import { connectDB } from "./db.js";
 
-const app = express();
-app.use(express.json()); // para ler JSON do body
-
-// Endpoint POST para buscar usuário pelo CPF
-app.post("/mostrar_usuario", async (req, res) => {
+export default async function handler(req, res) {
   try {
-    const { cpfUsuario } = req.body;
-
-    if (!cpfUsuario) {
-      return res.status(400).json({ sucesso: false, erro: "CPF não informado" });
+    // 🔹 Permite apenas POST
+    if (req.method !== "POST") {
+      return res.status(405).json({ sucesso: false, erro: "Método não permitido" });
     }
 
-    // Conectar ao banco MySQL
-    const conn = await connectDB();
+    // 🔹 Força a leitura manual do corpo
+    let bodyData = "";
+    await new Promise((resolve, reject) => {
+      req.on("data", chunk => bodyData += chunk);
+      req.on("end", resolve);
+      req.on("error", reject);
+    });
+
+    // 🔹 Tenta converter o body em JSON
+    let body;
+    try {
+      body = JSON.parse(bodyData);
+    } catch (err) {
+      console.error("❌ Body inválido:", bodyData);
+      return res.status(400).json({ sucesso: false, erro: "JSON inválido recebido" });
+    }
+
+    // 🔹 Extrai os campos
+    const {
+      cpfUsuario
+    } = body;
+
+
+
+    console.log("📥 Dados recebidos:", body);
+
+    // 🔹 Conecta ao banco
+    const db = await connectDB();
 
     // Buscar usuário pelo CPF
     const [rows] = await conn.execute(
