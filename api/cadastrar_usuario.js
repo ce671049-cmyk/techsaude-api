@@ -1,5 +1,5 @@
 // api/cadastrar_usuario.js
-import { connectDB } from "./db.js";
+import { connectDB } from "../db.js"; // ✅ sobe um nível
 
 // 🔹 Função para converter data de DD/MM/YYYY → YYYY-MM-DD
 function formatarData(dataBr) {
@@ -7,9 +7,9 @@ function formatarData(dataBr) {
     if (!dataBr || typeof dataBr !== "string") return dataBr;
     if (dataBr.includes("/")) {
       const [dia, mes, ano] = dataBr.split("/");
-      if (dia && mes && ano) return `${ano}-${mes}-${dia}`;
+      return `${ano}-${mes}-${dia}`;
     }
-    return dataBr; // já está no formato certo
+    return dataBr;
   } catch (err) {
     console.error("Erro ao formatar data:", err);
     return dataBr;
@@ -18,12 +18,11 @@ function formatarData(dataBr) {
 
 export default async function handler(req, res) {
   try {
-    // 🔹 Aceita apenas POST
     if (req.method !== "POST") {
       return res.status(405).json({ erro: "Método não permitido" });
     }
 
-    // 🔹 Força conversão de texto para JSON
+    // 🔹 Força conversão de string → JSON
     let body = req.body;
     if (typeof body === "string") {
       try {
@@ -34,6 +33,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // 🔹 Extrai dados
     const {
       nome_completoUsuario,
       cpfUsuario,
@@ -56,12 +56,13 @@ export default async function handler(req, res) {
       !senhaUsuario ||
       !telefoneUsuario
     ) {
-      return res
-        .status(400)
-        .json({ sucesso: false, erro: "Campos obrigatórios faltando" });
+      return res.status(400).json({
+        sucesso: false,
+        erro: "Campos obrigatórios faltando",
+      });
     }
 
-    // 🔹 Corrige o formato da data
+    // 🔹 Formata data corretamente
     const dataFormatada = formatarData(data_nascUsuario);
 
     console.log("📦 Dados recebidos:", {
@@ -75,7 +76,7 @@ export default async function handler(req, res) {
       telefoneUsuario,
     });
 
-    // 🔹 Conecta ao banco
+    // 🔹 Conecta no banco
     const db = await connectDB();
 
     // 🔹 Executa o INSERT
@@ -87,28 +88,31 @@ export default async function handler(req, res) {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    const [result] = await db.execute(query, [
-      nome_completoUsuario,
-      cpfUsuario,
-      emailUsuario,
-      dataFormatada,
-      enderecoUsuario,
-      sexoUsuario,
-      senhaUsuario,
-      telefoneUsuario,
-    ]);
+    const values = [
+      String(nome_completoUsuario),
+      String(cpfUsuario),
+      String(emailUsuario),
+      String(dataFormatada),
+      String(enderecoUsuario),
+      String(sexoUsuario),
+      String(senhaUsuario),
+      String(telefoneUsuario),
+    ];
+
+    const [result] = await db.execute(query, values);
 
     await db.end();
 
-    console.log("✅ Usuário cadastrado:", result);
-    return res
-      .status(200)
-      .json({ sucesso: true, mensagem: "Usuário cadastrado com sucesso!" });
-
+    console.log("✅ Usuário cadastrado com sucesso:", result);
+    return res.status(200).json({
+      sucesso: true,
+      mensagem: "Usuário cadastrado com sucesso!",
+    });
   } catch (err) {
     console.error("💥 Erro no servidor:", err);
-    return res
-      .status(500)
-      .json({ sucesso: false, erro: err.message || "Erro interno no servidor" });
+    return res.status(500).json({
+      sucesso: false,
+      erro: err.message || "Erro interno no servidor",
+    });
   }
 }
