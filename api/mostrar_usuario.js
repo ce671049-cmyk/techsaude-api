@@ -1,57 +1,45 @@
 import { connectDB } from "./db.js";
 
-const server = createServer(async (req, res) => {
-  // Só aceita POST
+export default async function handler(req, res) {
   if (req.method !== "POST") {
-    res.writeHead(405, { "Content-Type": "application/json" });
-    return res.end(JSON.stringify({ sucesso: false, erro: "Método não permitido" }));
+    return res.status(405).json({ sucesso: false, erro: "Método não permitido" });
   }
 
-  // Lê o body
-  let body = "";
-  req.on("data", chunk => body += chunk);
-  req.on("end", async () => {
-    try {
-      const data = JSON.parse(body);
-      const cpfUsuario = data.cpfUsuario;
-
-      if (!cpfUsuario) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ sucesso: false, erro: "CPF não enviado" }));
-      }
-
-      // Conecta ao banco
-      const conn = await connectDB();
-
-      // Consulta usuário
-      const [rows] = await conn.execute(
-        `SELECT nome, cpf, email, nascimento, endereco, telefone, sexo 
-         FROM usuarios 
-         WHERE cpf = ?`,
-        [cpfUsuario]
-      );
-
-      await conn.end();
-
-      if (rows.length === 0) {
-        res.writeHead(404, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ sucesso: false, erro: "Usuário não encontrado" }));
-      }
-
-      // Retorna os dados do usuário
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ sucesso: true, usuario: rows[0] }));
-
-    } catch (err) {
-      console.error(err);
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ sucesso: false, erro: "Erro no servidor" }));
-    }
+  let bodyData = "";
+  await new Promise((resolve, reject) => {
+    req.on("data", chunk => bodyData += chunk);
+    req.on("end", resolve);
+    req.on("error", reject);
   });
 
-  req.on("error", err => {
-    console.error("Erro na requisição:", err);
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ sucesso: false, erro: "Erro ao receber dados" }));
-  });
-});
+  let body;
+  try {
+    body = JSON.parse(bodyData);
+  } catch (err) {
+    return res.status(400).json({ sucesso: false, erro: "JSON inválido" });
+  }
+
+  const cpfUsuario = body.cpfUsuario;
+  if (!cpfUsuario) return res.status(400).json({ sucesso: false, erro: "CPF não enviado" });
+
+  try {
+    const conn = await connectDB();
+
+    const [rows] = await conn.execute(
+      `SELECT nome, cpf, email, nascimento, endereco, telefone, sexo 
+       FROM usuarios 
+       WHERE cpf = ?`,
+      [cpfUsuario]
+    );
+
+    await conn.end();
+
+    if (rows.length === 0) return res.status(404).json({ sucesso: false, erro: "Usuário não encontrado" });
+
+    return res.status(200).json({ sucesso: true, usuario: rows[0] });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ sucesso: false, erro: "Erro no servidor" });
+  }
+}
