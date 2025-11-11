@@ -2,24 +2,29 @@ import { connectDB } from "./db.js";
 
 export default async function handler(req, res) {
   try {
-    // Aceita apenas POST
+    // 🔹 Permite apenas POST
     if (req.method !== "POST") {
-      return res.status(405).json({ erro: "Método não permitido" });
+      return res.status(405).json({ sucesso: false, erro: "Método não permitido" });
     }
 
-    let body = req.body;
+    // 🔹 Força a leitura manual do corpo
+    let bodyData = "";
+    await new Promise((resolve, reject) => {
+      req.on("data", chunk => bodyData += chunk);
+      req.on("end", resolve);
+      req.on("error", reject);
+    });
 
-    // 🔹 Garante que o body seja um objeto JSON
-    if (typeof body !== "object") {
-      try {
-        const text = await req.text();
-        body = JSON.parse(text);
-      } catch (err) {
-        console.error("❌ Erro ao converter body:", err);
-        return res.status(400).json({ erro: "Body inválido (não é JSON)" });
-      }
+    // 🔹 Tenta converter o body em JSON
+    let body;
+    try {
+      body = JSON.parse(bodyData);
+    } catch (err) {
+      console.error("❌ Body inválido:", bodyData);
+      return res.status(400).json({ sucesso: false, erro: "JSON inválido recebido" });
     }
 
+    // 🔹 Extrai os campos
     const {
       nome_completoUsuario,
       cpfUsuario,
@@ -31,7 +36,7 @@ export default async function handler(req, res) {
       telefoneUsuario,
     } = body;
 
-    // 🔹 Validação
+    // 🔹 Verificação simples
     if (
       !nome_completoUsuario ||
       !cpfUsuario ||
@@ -42,24 +47,24 @@ export default async function handler(req, res) {
       !senhaUsuario ||
       !telefoneUsuario
     ) {
-      return res
-        .status(400)
-        .json({ sucesso: false, erro: "Campos obrigatórios faltando" });
+      return res.status(400).json({ sucesso: false, erro: "Campos obrigatórios faltando" });
     }
+
+    console.log("📥 Dados recebidos:", body);
 
     // 🔹 Conecta ao banco
     const db = await connectDB();
 
-    // 🔹 Executa o INSERT direto (sem formatar a data)
     const query = `
       INSERT INTO TB_Usuario (
         nome_completoUsuario, cpfUsuario, emailUsuario,
         data_nascUsuario, enderecoUsuario, sexoUsuario,
         senhaUsuario, telefoneUsuario
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    const [result] = await db.execute(query, [
+    await db.execute(query, [
       nome_completoUsuario,
       cpfUsuario,
       emailUsuario,
@@ -72,15 +77,14 @@ export default async function handler(req, res) {
 
     await db.end();
 
-    console.log("✅ Usuário cadastrado:", result);
-    return res
-      .status(200)
-      .json({ sucesso: true, mensagem: "Usuário cadastrado com sucesso!" });
+    console.log("✅ Usuário cadastrado com sucesso!");
+    return res.status(200).json({ sucesso: true, mensagem: "Usuário cadastrado com sucesso!" });
 
   } catch (err) {
     console.error("💥 Erro no servidor:", err);
-    return res
-      .status(500)
-      .json({ sucesso: false, erro: err.message || "Erro interno no servidor" });
+    return res.status(500).json({
+      sucesso: false,
+      erro: err.message || "Erro interno no servidor"
+    });
   }
 }
