@@ -1,3 +1,4 @@
+import http from "http";       // 🔹 Import obrigatório
 import { connectDB } from "./db.js";
 
 // Função para ler o body da requisição
@@ -10,7 +11,7 @@ function getRequestBody(req) {
   });
 }
 
-const server = createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {   // 🔹 Usar http.createServer
   if (req.method !== "POST") {
     res.writeHead(405, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ sucesso: false, erro: "Método não permitido" }));
