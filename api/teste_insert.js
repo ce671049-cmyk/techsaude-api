@@ -1,7 +1,7 @@
 import mysql from "mysql2/promise";
 
 async function insert() {
-import { connectDB } from "./db.js";
+import { connectDB } from "/db.js";
   });
 
   const query = `
