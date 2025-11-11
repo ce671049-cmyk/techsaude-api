@@ -1,18 +1,22 @@
-// api/cadastrar_usuario.js
 import { connectDB } from "./db.js";
-
 
 export default async function handler(req, res) {
   try {
-    if (req.method !== "POST")
+    // Aceita apenas POST
+    if (req.method !== "POST") {
       return res.status(405).json({ erro: "Método não permitido" });
+    }
 
     let body = req.body;
-    if (typeof body === "string") {
+
+    // 🔹 Garante que o body seja um objeto JSON
+    if (typeof body !== "object") {
       try {
-        body = JSON.parse(body);
-      } catch {
-        return res.status(400).json({ erro: "JSON inválido" });
+        const text = await req.text();
+        body = JSON.parse(text);
+      } catch (err) {
+        console.error("❌ Erro ao converter body:", err);
+        return res.status(400).json({ erro: "Body inválido (não é JSON)" });
       }
     }
 
@@ -27,6 +31,7 @@ export default async function handler(req, res) {
       telefoneUsuario,
     } = body;
 
+    // 🔹 Validação
     if (
       !nome_completoUsuario ||
       !cpfUsuario ||
@@ -42,17 +47,10 @@ export default async function handler(req, res) {
         .json({ sucesso: false, erro: "Campos obrigatórios faltando" });
     }
 
-    // 🔹 Formatar data corretamente
-    const dataFormatada = formatarData(data_nascUsuario);
-    if (!dataFormatada) {
-      return res.status(400).json({
-        sucesso: false,
-        erro: "Data de nascimento inválida. Use DD/MM/AAAA.",
-      });
-    }
-
+    // 🔹 Conecta ao banco
     const db = await connectDB();
 
+    // 🔹 Executa o INSERT direto (sem formatar a data)
     const query = `
       INSERT INTO TB_Usuario (
         nome_completoUsuario, cpfUsuario, emailUsuario,
@@ -61,28 +59,28 @@ export default async function handler(req, res) {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    const values = [
-      nome_completoUsuario.trim(),
-      cpfUsuario.trim(),
-      emailUsuario.trim(),
-      dataFormatada,
-      enderecoUsuario.trim(),
-      sexoUsuario.trim(),
-      senhaUsuario.trim(),
-      telefoneUsuario.trim(),
-    ];
+    const [result] = await db.execute(query, [
+      nome_completoUsuario,
+      cpfUsuario,
+      emailUsuario,
+      data_nascUsuario,
+      enderecoUsuario,
+      sexoUsuario,
+      senhaUsuario,
+      telefoneUsuario,
+    ]);
 
-    const [result] = await db.execute(query, values);
     await db.end();
 
-    console.log("✅ Usuário inserido:", result);
+    console.log("✅ Usuário cadastrado:", result);
     return res
       .status(200)
       .json({ sucesso: true, mensagem: "Usuário cadastrado com sucesso!" });
+
   } catch (err) {
     console.error("💥 Erro no servidor:", err);
     return res
       .status(500)
-      .json({ sucesso: false, erro: err.message || "Erro interno" });
+      .json({ sucesso: false, erro: err.message || "Erro interno no servidor" });
   }
 }
