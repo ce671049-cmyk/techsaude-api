@@ -1,39 +1,37 @@
 // api/cadastrar_usuario.js
 import { connectDB } from "./db.js";
 
-// 🔹 Função para converter data de DD/MM/YYYY → YYYY-MM-DD
 function formatarData(dataBr) {
   try {
-    if (!dataBr || typeof dataBr !== "string") return dataBr;
-    if (dataBr.includes("/")) {
-      const [dia, mes, ano] = dataBr.split("/");
-      return `${ano}-${mes}-${dia}`;
+    if (!dataBr || typeof dataBr !== "string") return null;
+    const partes = dataBr.split(/[\/\-]/); // aceita / ou -
+    if (partes.length === 3) {
+      const [dia, mes, ano] = partes;
+      // 🔹 garante que são números válidos
+      if (dia.length === 2 && mes.length === 2 && ano.length === 4) {
+        return `${ano}-${mes}-${dia}`;
+      }
     }
-    return dataBr;
-  } catch (err) {
-    console.error("Erro ao formatar data:", err);
-    return dataBr;
+    return null;
+  } catch {
+    return null;
   }
 }
 
 export default async function handler(req, res) {
   try {
-    if (req.method !== "POST") {
+    if (req.method !== "POST")
       return res.status(405).json({ erro: "Método não permitido" });
-    }
 
-    // 🔹 Força conversão de string → JSON
     let body = req.body;
     if (typeof body === "string") {
       try {
         body = JSON.parse(body);
-      } catch (err) {
-        console.error("❌ Erro ao converter body:", err);
-        return res.status(400).json({ erro: "Formato inválido de JSON" });
+      } catch {
+        return res.status(400).json({ erro: "JSON inválido" });
       }
     }
 
-    // 🔹 Extrai dados
     const {
       nome_completoUsuario,
       cpfUsuario,
@@ -45,7 +43,6 @@ export default async function handler(req, res) {
       telefoneUsuario,
     } = body;
 
-    // 🔹 Validação
     if (
       !nome_completoUsuario ||
       !cpfUsuario ||
@@ -56,30 +53,22 @@ export default async function handler(req, res) {
       !senhaUsuario ||
       !telefoneUsuario
     ) {
+      return res
+        .status(400)
+        .json({ sucesso: false, erro: "Campos obrigatórios faltando" });
+    }
+
+    // 🔹 Formatar data corretamente
+    const dataFormatada = formatarData(data_nascUsuario);
+    if (!dataFormatada) {
       return res.status(400).json({
         sucesso: false,
-        erro: "Campos obrigatórios faltando",
+        erro: "Data de nascimento inválida. Use DD/MM/AAAA.",
       });
     }
 
-    // 🔹 Formata data corretamente
-    const dataFormatada = formatarData(data_nascUsuario);
-
-    console.log("📦 Dados recebidos:", {
-      nome_completoUsuario,
-      cpfUsuario,
-      emailUsuario,
-      dataFormatada,
-      enderecoUsuario,
-      sexoUsuario,
-      senhaUsuario,
-      telefoneUsuario,
-    });
-
-    // 🔹 Conecta no banco
     const db = await connectDB();
 
-    // 🔹 Executa o INSERT
     const query = `
       INSERT INTO TB_Usuario (
         nome_completoUsuario, cpfUsuario, emailUsuario,
@@ -89,30 +78,27 @@ export default async function handler(req, res) {
     `;
 
     const values = [
-      String(nome_completoUsuario),
-      String(cpfUsuario),
-      String(emailUsuario),
-      String(dataFormatada),
-      String(enderecoUsuario),
-      String(sexoUsuario),
-      String(senhaUsuario),
-      String(telefoneUsuario),
+      nome_completoUsuario.trim(),
+      cpfUsuario.trim(),
+      emailUsuario.trim(),
+      dataFormatada,
+      enderecoUsuario.trim(),
+      sexoUsuario.trim(),
+      senhaUsuario.trim(),
+      telefoneUsuario.trim(),
     ];
 
     const [result] = await db.execute(query, values);
-
     await db.end();
 
-    console.log("✅ Usuário cadastrado com sucesso:", result);
-    return res.status(200).json({
-      sucesso: true,
-      mensagem: "Usuário cadastrado com sucesso!",
-    });
+    console.log("✅ Usuário inserido:", result);
+    return res
+      .status(200)
+      .json({ sucesso: true, mensagem: "Usuário cadastrado com sucesso!" });
   } catch (err) {
     console.error("💥 Erro no servidor:", err);
-    return res.status(500).json({
-      sucesso: false,
-      erro: err.message || "Erro interno no servidor",
-    });
+    return res
+      .status(500)
+      .json({ sucesso: false, erro: err.message || "Erro interno" });
   }
 }
