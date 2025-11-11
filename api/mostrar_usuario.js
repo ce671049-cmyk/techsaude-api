@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     const [rows] = await conn.execute(
       `SELECT nome, cpf, email, nascimento, endereco, telefone, sexo 
        FROM usuarios 
-       WHERE cpf = ?`,
+       WHERE cpf = ?`
       [cpfUsuario]
     );
 
