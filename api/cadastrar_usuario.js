@@ -1,22 +1,6 @@
 // api/cadastrar_usuario.js
 import { connectDB } from "./db.js";
 
-function formatarData(dataBr) {
-  try {
-    if (!dataBr || typeof dataBr !== "string") return null;
-    const partes = dataBr.split(/[\/\-]/); // aceita / ou -
-    if (partes.length === 3) {
-      const [dia, mes, ano] = partes;
-      // 🔹 garante que são números válidos
-      if (dia.length === 2 && mes.length === 2 && ano.length === 4) {
-        return `${ano}-${mes}-${dia}`;
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 export default async function handler(req, res) {
   try {
