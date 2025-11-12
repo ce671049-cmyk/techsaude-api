@@ -7,20 +7,20 @@ export default async function handler(req, res) {
       return res.status(405).json({ sucesso: false, erro: "Método não permitido" });
     }
 
-    // 🔹 Força a leitura manual do corpo
+    // 🔹 Lê o corpo manualmente (porque o Vercel às vezes não faz o parse automático)
     let bodyData = "";
     await new Promise((resolve, reject) => {
-      req.on("data", chunk => bodyData += chunk);
+      req.on("data", chunk => (bodyData += chunk));
       req.on("end", resolve);
       req.on("error", reject);
     });
 
-    // 🔹 Tenta converter o body em JSON
+    // 🔹 Converte o corpo para JSON
     let body;
     try {
       body = JSON.parse(bodyData);
     } catch (err) {
-      console.error("❌ Body inválido:", bodyData);
+      console.error("❌ Body inválido recebido:", bodyData);
       return res.status(400).json({ sucesso: false, erro: "JSON inválido recebido" });
     }
 
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       telefoneUsuario,
     } = body;
 
-    // 🔹 Verificação simples
+    // 🔹 Valida campos obrigatórios
     if (
       !nome_completoUsuario ||
       !cpfUsuario ||
@@ -51,6 +51,21 @@ export default async function handler(req, res) {
     }
 
     console.log("📥 Dados recebidos:", body);
+
+    // 🔹 Converte a data "DD/MM/YYYY" → "YYYY-MM-DD"
+    function converterDataParaMySQL(data) {
+      // Ignora se já estiver no formato certo
+      if (data.includes("-")) return data;
+      const partes = data.split("/");
+      if (partes.length !== 3) return null;
+      const [dia, mes, ano] = partes;
+      return `${ano}-${mes}-${dia}`;
+    }
+
+    const dataConvertida = converterDataParaMySQL(data_nascUsuario);
+    if (!dataConvertida) {
+      return res.status(400).json({ sucesso: false, erro: "Formato de data inválido" });
+    }
 
     // 🔹 Conecta ao banco
     const db = await connectDB();
@@ -68,7 +83,7 @@ export default async function handler(req, res) {
       nome_completoUsuario,
       cpfUsuario,
       emailUsuario,
-      data_nascUsuario,
+      dataConvertida, // ✅ agora está no formato certo
       enderecoUsuario,
       sexoUsuario,
       senhaUsuario,
@@ -79,12 +94,11 @@ export default async function handler(req, res) {
 
     console.log("✅ Usuário cadastrado com sucesso!");
     return res.status(200).json({ sucesso: true, mensagem: "Usuário cadastrado com sucesso!" });
-
   } catch (err) {
     console.error("💥 Erro no servidor:", err);
     return res.status(500).json({
       sucesso: false,
-      erro: err.message || "Erro interno no servidor"
+      erro: err.message || "Erro interno no servidor",
     });
   }
 }
