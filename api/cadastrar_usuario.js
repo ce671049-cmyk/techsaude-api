@@ -2,12 +2,11 @@ import { connectDB } from "./db.js";
 
 export default async function handler(req, res) {
   try {
-    // 🔹 Permite apenas POST
     if (req.method !== "POST") {
       return res.status(405).json({ sucesso: false, erro: "Método não permitido" });
     }
 
-    // 🔹 Lê o corpo manualmente (porque o Vercel às vezes não faz o parse automático)
+    // 🔹 Lê o corpo manualmente
     let bodyData = "";
     await new Promise((resolve, reject) => {
       req.on("data", chunk => (bodyData += chunk));
@@ -15,7 +14,6 @@ export default async function handler(req, res) {
       req.on("error", reject);
     });
 
-    // 🔹 Converte o corpo para JSON
     let body;
     try {
       body = JSON.parse(bodyData);
@@ -24,7 +22,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ sucesso: false, erro: "JSON inválido recebido" });
     }
 
-    // 🔹 Extrai os campos
     const {
       nome_completoUsuario,
       cpfUsuario,
@@ -36,7 +33,6 @@ export default async function handler(req, res) {
       telefoneUsuario,
     } = body;
 
-    // 🔹 Valida campos obrigatórios
     if (
       !nome_completoUsuario ||
       !cpfUsuario ||
@@ -52,20 +48,24 @@ export default async function handler(req, res) {
 
     console.log("📥 Dados recebidos:", body);
 
-    // 🔹 Converte a data "DD/MM/YYYY" → "YYYY-MM-DD"
-    function converterDataParaMySQL(data) {
-      // Ignora se já estiver no formato certo
-      if (data.includes("-")) return data;
-      const partes = data.split("/");
-      if (partes.length !== 3) return null;
-      const [dia, mes, ano] = partes;
-      return `${ano}-${mes}-${dia}`;
+    // 🔹 Função para normalizar a data
+    function normalizarData(data) {
+      // Caso venha no formato ISO (ex: 2006-10-26T00:00:00.000Z)
+      if (data.includes("T")) {
+        return data.split("T")[0]; // → "2006-10-26"
+      }
+
+      // Caso venha no formato brasileiro (26/10/2006)
+      if (data.includes("/")) {
+        const [dia, mes, ano] = data.split("/");
+        return `${ano}-${mes}-${dia}`;
+      }
+
+      // Já está no formato correto
+      return data;
     }
 
-    const dataConvertida = converterDataParaMySQL(data_nascUsuario);
-    if (!dataConvertida) {
-      return res.status(400).json({ sucesso: false, erro: "Formato de data inválido" });
-    }
+    const dataFormatada = normalizarData(data_nascUsuario);
 
     // 🔹 Conecta ao banco
     const db = await connectDB();
@@ -83,7 +83,7 @@ export default async function handler(req, res) {
       nome_completoUsuario,
       cpfUsuario,
       emailUsuario,
-      dataConvertida, // ✅ agora está no formato certo
+      dataFormatada, // ✅ data já normalizada
       enderecoUsuario,
       sexoUsuario,
       senhaUsuario,
