@@ -85,7 +85,7 @@ export default async function handler(req, res) {
       crmMedico,
       cpfMedico,
       emailMedico,
-      dataFormatada,
+      data_nascMedico,
       sexoMedico,
       especialidadeMedico,
       senhaMedico,
