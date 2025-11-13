@@ -63,7 +63,7 @@ export default async function handler(req, res) {
     // 🔹 Função para normalizar a data (aceita ISO ou DD/MM/AAAA)
     function normalizarData(data) {
       if (data.includes("T")) return data.split("T")[0]; // Ex: 2006-10-26
-      if (data.includes("/", "\")) {
+      if (data.includes("/")) {
         const [dia, mes, ano] = data.split("/");
         return `${ano}-${mes}-${dia}`;
       }
