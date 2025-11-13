@@ -61,16 +61,15 @@ export default async function handler(req, res) {
     console.log("📥 Dados recebidos:", body);
 
     // 🔹 Função para normalizar a data (aceita ISO ou DD/MM/AAAA)
-    function normalizarData(data) {
-      if (data.includes("T")) return data.split("T")[0]; // Ex: 2006-10-26
-      if (data.includes("/")) {
-        const [dia, mes, ano] = data.split("/");
-        return `${ano}-${mes}-${dia}`;
-      }
-      return data; // já no formato correto
-    }
+function formatarData(data) {
+  if (/\d{2}\/\d{2}\/\d{4}/.test(data)) {
+    const [dia, mes, ano] = data.split('/');
+    return `${ano}-${mes}-${dia}`;
+  }
+  return data; // já está no formato ISO
+}
 
-    const dataFormatada = normalizarData(data_nascMedico);
+    const formatarData = normalizarData(data_nascMedico);
 
     // 🔹 Conecta ao banco
     const db = await connectDB();
